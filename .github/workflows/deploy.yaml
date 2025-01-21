@@ -18,6 +18,20 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      # Authenticate with GCP using workload identity federation
+      - name: Authenticate to Google Cloud
+        id: auth
+        uses: google-github-actions/auth@v1
+        with:
+          workload_identity_provider: 'projects/142680795577/locations/global/workloadIdentityPools/kodiak-pool/providers/github-oidc-provider'
+          service_account: 'kodiac-svc-acc@kodiak-448212.iam.gserviceaccount.com'
+          token_format: 'access_token'
+
+      # Debug Auth Output
+      - name: Debug Auth Output
+        run: |
+          echo "Access Token: ${{ steps.auth.outputs.access_token }}"
+
       # Debug OIDC Token
       - name: Debug OIDC Token
         run: |
@@ -29,17 +43,6 @@ jobs:
           echo "Decoded OIDC Token:"
           echo "${{ steps.auth.outputs.access_token }}" | jq -R 'split(".") | .[1] | @base64d | fromjson'
 
-
-      # Authenticate with GCP using workload identity federation
-      - name: Authenticate to Google Cloud
-        id: auth
-        uses: google-github-actions/auth@v1
-        with:
-          workload_identity_provider: 'projects/142680795577/locations/global/workloadIdentityPools/kodiak-pool/providers/github-oidc-provider'
-          service_account: 'kodiac-svc-acc@kodiak-448212.iam.gserviceaccount.com'
-          token_format: 'access_token'
-
-      
       # Set up Cloud SDK
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v1
@@ -49,16 +52,16 @@ jobs:
         run: |
           gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
 
-      # Set Docker image version using GitHub Run Number and commit SHA
+      # Set Docker image version using GitHub Run Number
       - name: Set Docker image version
         id: version
-        run: echo "VERSION=v1.${{ github.run_number }}.$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_ENV
+        run: echo "VERSION=v1.${{ github.run_number }}" >> $GITHUB_ENV
 
       # Build and Push Docker Image to GCP Container Registry
       - name: Build and Push Docker Image
         run: |
-          docker build -t us-central1-docker.pkg.dev/kodiak-448212/kodiak/kodi:${{ env.VERSION }} ./frontend || exit 1
-          docker push us-central1-docker.pkg.dev/kodiak-448212/kodiak/kodi:${{ env.VERSION }} || exit 1
+          docker build -t us-central1-docker.pkg.dev/kodiak-448212/kodiak/kodi:${{ env.VERSION }} ./frontend
+          docker push us-central1-docker.pkg.dev/kodiak-448212/kodiak/kodi:${{ env.VERSION }}
 
       # Update Kubernetes manifest
       - name: Update Kubernetes manifest
