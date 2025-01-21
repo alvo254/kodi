@@ -21,6 +21,10 @@ jobs:
       # Debug OIDC Token
       - name: Debug OIDC Token
         run: |
+          if [ -z "${{ steps.auth.outputs.access_token }}" ]; then
+            echo "Error: OIDC token is empty!"
+            exit 1
+          fi
           echo "OIDC Token: ${{ steps.auth.outputs.access_token }}"
           echo "Decoded OIDC Token:"
           echo "${{ steps.auth.outputs.access_token }}" | jq -R 'split(".") | .[1] | @base64d | fromjson'
