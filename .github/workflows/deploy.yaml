@@ -21,10 +21,14 @@ jobs:
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v1
         with:
-          workload_identity_provider: "projects/448212/locations/global/workloadIdentityPools/kodiak-pool/providers/my-provider"
+          workload_identity_provider: "projects/448212/locations/global/workloadIdentityPools/my-pool/providers/my-provider"
           service_account: "kodiac-svc-acc@kodiak-448212.iam.gserviceaccount.com"
 
-      # Configure Docker to use the GCP Artifact Registry
+      # Verify active Google Cloud account
+      - name: Verify active account
+        run: gcloud auth list
+
+      # Configure Docker to use the GCP Container Registry
       - name: Configure Docker for Artifact Registry
         run: |
           echo "{\"credHelpers\":{\"gcr.io\":\"gcloud\",\"us.gcr.io\":\"gcloud\",\"eu.gcr.io\":\"gcloud\",\"asia.gcr.io\":\"gcloud\"}}" > ~/.docker/config.json
@@ -34,7 +38,7 @@ jobs:
         id: version
         run: echo "VERSION=v1.${{ github.run_number }}" >> $GITHUB_ENV
 
-      # Build and Push Docker Image to GCP Artifact Registry
+      # Build and Push Docker Image to GCP Container Registry
       - name: Build and Push Docker Image
         run: |
           docker build -t us-central1-docker.pkg.dev/kodiak-448212/kodiak/kodi:${{ env.VERSION }} ./frontend
