@@ -26,11 +26,21 @@ jobs:
           workload_identity_provider: 'projects/142680795577/locations/global/workloadIdentityPools/kodiak-pool/providers/github-oidc-provider'
           service_account: 'kodiac-svc-acc@kodiak-448212.iam.gserviceaccount.com'
           token_format: 'access_token'
+          create_credentials_file: true
+          export_environment_variables: true
+          cleanup_credentials: true
+          access_token_lifetime: 3600s
+          access_token_scopes: https://www.googleapis.com/auth/cloud-platform
+          retries: 3
+          backoff: 250
+          id_token_include_email: false
 
-      # Debug Auth Output
-      - name: Debug Auth Output
+      # Debug OIDC Token
+      - name: Debug OIDC Token
         run: |
-          echo "Access Token: ${{ steps.auth.outputs.access_token }}"
+          echo "OIDC Token: ${{ steps.auth.outputs.access_token }}"
+          echo "Decoded OIDC Token:"
+          echo "${{ steps.auth.outputs.access_token }}" | jq -R 'split(".") | .[1] | @base64d | fromjson'
 
       # Set up Cloud SDK
       - name: Set up Cloud SDK
