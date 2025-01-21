@@ -11,6 +11,7 @@ jobs:
 
     permissions:
       id-token: write  # Required for workload identity federation
+      contents: write  # Required for updating files in the repository
 
     steps:
       # Checkout the source code
@@ -23,15 +24,16 @@ jobs:
         with:
           workload_identity_provider: 'projects/142680795577/locations/global/workloadIdentityPools/kodiak-pool/providers/github-oidc-provider'
           service_account: 'kodiac-svc-acc@kodiak-448212.iam.gserviceaccount.com'
+          token_format: 'access_token'
 
-      # Verify active Google Cloud account
-      - name: Verify active account
-        run: gcloud auth list
+      # Set up Cloud SDK
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
 
-      # Configure Docker to use the GCP Container Registry
+      # Configure Docker for Artifact Registry
       - name: Configure Docker for Artifact Registry
         run: |
-          echo "{\"credHelpers\":{\"gcr.io\":\"gcloud\",\"us.gcr.io\":\"gcloud\",\"eu.gcr.io\":\"gcloud\",\"asia.gcr.io\":\"gcloud\"}}" > ~/.docker/config.json
+          gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
 
       # Set Docker image version using GitHub Run Number
       - name: Set Docker image version
@@ -44,11 +46,15 @@ jobs:
           docker build -t us-central1-docker.pkg.dev/kodiak-448212/kodiak/kodi:${{ env.VERSION }} ./frontend
           docker push us-central1-docker.pkg.dev/kodiak-448212/kodiak/kodi:${{ env.VERSION }}
 
-      # Update Kubernetes manifest in GitOps repository
+      # Update Kubernetes manifest
       - name: Update Kubernetes manifest
+        run: |
+          sed -i "s|image: us-central1-docker.pkg.dev/kodiak-448212/kodiak/kodi:.*|image: us-central1-docker.pkg.dev/kodiak-448212/kodiak/kodi:${{ env.VERSION }}|" package/manifests/frontend.yaml
+
+      # Commit and push changes
+      - name: Commit and push changes
         uses: stefanzweifel/git-auto-commit-action@v4
         with:
-          repository: https://github.com/your-org/kodi.git
           file_pattern: package/manifests/frontend.yaml
           commit_message: "Update image version to ${{ env.VERSION }}"
           branch: main
