@@ -9,6 +9,9 @@ jobs:
   build-and-push:
     runs-on: ubuntu-latest
 
+    permissions:
+      id-token: write  # Add this line to ensure the GITHUB_TOKEN has the required permissions for workload identity federation
+
     steps:
       # Checkout the source code
       - name: Checkout repository
