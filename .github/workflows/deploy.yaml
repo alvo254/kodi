@@ -29,8 +29,13 @@ jobs:
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v1
         with:
-          workload_identity_provider: "projects/142680795577/locations/global/workloadIdentityPools/kodiak-pool/providers/my-provider"
-          service_account: "kodiac-svc-acc@kodiak-448212.iam.gserviceaccount.com"
+          workload_identity_provider: 'projects/142680795577/locations/global/workloadIdentityPools/kodiak-pool/providers/github-oidc-provider'
+          service_account: 'kodiac-svc-acc@kodiak-448212.iam.gserviceaccount.com'
+          token_format: 'access_token'
+
+      # Set up Cloud SDK
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
 
       # Configure Docker for Artifact Registry
       - name: Configure Docker for Artifact Registry
