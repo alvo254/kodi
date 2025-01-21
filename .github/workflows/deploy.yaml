@@ -20,11 +20,19 @@ jobs:
 
       # Authenticate with GCP using workload identity federation
       - name: Authenticate to Google Cloud
+        id: auth  # Add an ID to reference the output of this step
         uses: google-github-actions/auth@v1
         with:
           workload_identity_provider: 'projects/142680795577/locations/global/workloadIdentityPools/kodiak-pool/providers/github-oidc-provider'
           service_account: 'kodiac-svc-acc@kodiak-448212.iam.gserviceaccount.com'
           token_format: 'access_token'
+
+      # Decode and print the OIDC token for debugging
+      - name: Decode OIDC Token
+        run: |
+          echo "OIDC Token: ${{ steps.auth.outputs.id_token }}"
+          echo "Decoded OIDC Token:"
+          echo "${{ steps.auth.outputs.id_token }}" | jq -R 'split(".") | .[1] | @base64d | fromjson'
 
       # Set up Cloud SDK
       - name: Set up Cloud SDK
