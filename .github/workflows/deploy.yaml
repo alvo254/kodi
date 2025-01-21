@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'frontend/**'
+      - '.github/workflows/**'
 
 jobs:
   build-and-push:
@@ -11,11 +14,16 @@ jobs:
 
     permissions:
       id-token: write  # Required for workload identity federation
+      contents: write  # Required for pushing to GitOps repo
 
     steps:
       # Checkout the source code
       - name: Checkout repository
         uses: actions/checkout@v3
+
+      # Set up Docker Buildx
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
 
       # Authenticate with GCP using workload identity federation
       - name: Authenticate to Google Cloud
@@ -24,31 +32,74 @@ jobs:
           workload_identity_provider: "projects/142680795577/locations/global/workloadIdentityPools/kodiak-pool/providers/my-provider"
           service_account: "kodiac-svc-acc@kodiak-448212.iam.gserviceaccount.com"
 
-      # Verify active Google Cloud account
-      - name: Verify active account
-        run: gcloud auth list
-
-      # Configure Docker to use the GCP Container Registry
+      # Configure Docker for Artifact Registry
       - name: Configure Docker for Artifact Registry
         run: |
-          echo "{\"credHelpers\":{\"gcr.io\":\"gcloud\",\"us.gcr.io\":\"gcloud\",\"eu.gcr.io\":\"gcloud\",\"asia.gcr.io\":\"gcloud\"}}" > ~/.docker/config.json
+          gcloud auth configure-docker us-central1-docker.pkg.dev --quiet
 
       # Set Docker image version using GitHub Run Number
       - name: Set Docker image version
         id: version
         run: echo "VERSION=v1.${{ github.run_number }}" >> $GITHUB_ENV
 
-      # Build and Push Docker Image to GCP Container Registry
+      # Build and Push Docker Image with layer caching
       - name: Build and Push Docker Image
-        run: |
-          docker build -t us-central1-docker.pkg.dev/kodiak-448212/kodiak/kodi:${{ env.VERSION }} ./frontend
-          docker push us-central1-docker.pkg.dev/kodiak-448212/kodiak/kodi:${{ env.VERSION }}
+        uses: docker/build-push-action@v4
+        with:
+          context: ./frontend
+          push: true
+          tags: us-central1-docker.pkg.dev/kodiak-448212/kodiak/kodi:${{ env.VERSION }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-      # Update Kubernetes manifest in GitOps repository
+      # Verify image was pushed successfully
+      - name: Verify image push
+        run: |
+          gcloud container images describe us-central1-docker.pkg.dev/kodiak-448212/kodiak/kodi:${{ env.VERSION }} || exit 1
+
+      # Checkout GitOps repository
+      - name: Checkout GitOps repository
+        uses: actions/checkout@v3
+        with:
+          repository: alvo254/kodi
+          path: gitops
+          token: ${{ secrets.PAT_TOKEN }}
+          fetch-depth: 0
+
+      # Update Kubernetes manifest
       - name: Update Kubernetes manifest
+        run: |
+          cd gitops
+          if [ ! -f package/manifests/frontend.yaml ]; then
+            echo "Error: Manifest file not found"
+            exit 1
+          fi
+          sed -i "s|image: us-central1-docker.pkg.dev/kodiak-448212/kodiak/kodi:.*|image: us-central1-docker.pkg.dev/kodiak-448212/kodiak/kodi:${{ env.VERSION }}|" package/manifests/frontend.yaml
+          
+          # Verify the file was updated
+          if ! grep -q "${{ env.VERSION }}" package/manifests/frontend.yaml; then
+            echo "Error: Failed to update manifest file"
+            exit 1
+          fi
+
+      # Commit and push changes
+      - name: Commit and push changes
         uses: stefanzweifel/git-auto-commit-action@v4
         with:
-          repository: https://github.com/alvo254/kodi.git
+          repository: gitops
           file_pattern: package/manifests/frontend.yaml
-          commit_message: "Update image version to ${{ env.VERSION }}"
+          commit_message: |
+            Update frontend image version to ${{ env.VERSION }}
+            
+            Automated change by GitHub Actions
+            Build: ${{ github.run_id }}
+            Workflow: ${{ github.workflow }}
           branch: main
+          push_options: --force
+
+      # Cleanup
+      - name: Cleanup
+        if: always()
+        run: |
+          rm -rf gitops
+          gcloud auth revoke --all --quiet || true
