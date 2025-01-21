@@ -18,6 +18,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      # Debug OIDC Token
+      - name: Debug OIDC Token
+        run: |
+          echo "OIDC Token: ${{ steps.auth.outputs.access_token }}"
+          echo "Decoded OIDC Token:"
+          echo "${{ steps.auth.outputs.access_token }}" | jq -R 'split(".") | .[1] | @base64d | fromjson'
+
+
       # Authenticate with GCP using workload identity federation
       - name: Authenticate to Google Cloud
         id: auth
@@ -27,13 +35,7 @@ jobs:
           service_account: 'kodiac-svc-acc@kodiak-448212.iam.gserviceaccount.com'
           token_format: 'access_token'
 
-      # Debug OIDC Token
-      - name: Debug OIDC Token
-        run: |
-          echo "OIDC Token: ${{ steps.auth.outputs.access_token }}"
-          echo "Decoded OIDC Token:"
-          echo "${{ steps.auth.outputs.access_token }}" | jq -R 'split(".") | .[1] | @base64d | fromjson'
-
+      
       # Set up Cloud SDK
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v1
