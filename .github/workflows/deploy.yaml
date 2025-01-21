@@ -14,31 +14,33 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      # Log in to DockerHub
-      - name: Log in to DockerHub
-        uses: docker/login-action@v2
+      # Authenticate with GCP using workload identity federation
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v1
         with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+          workload_identity_provider: "projects/448212/locations/global/workloadIdentityPools/my-pool/providers/my-provider"
+          service_account: "my-service-account@kodiak-448212.iam.gserviceaccount.com"
 
-      # Set the image version
+      # Configure Docker to use the GCP Container Registry
+      - name: Configure Docker for GCP
+        run: gcloud auth configure-docker
+
+      # Set Docker image version using GitHub Run Number
       - name: Set Docker image version
         id: version
         run: echo "VERSION=v1.${{ github.run_number }}" >> $GITHUB_ENV
 
-      # Build and push the Docker image
+      # Build and Push Docker Image to GCP Container Registry
       - name: Build and Push Docker Image
         run: |
-          docker build -t alvin254/kodi:${{ env.VERSION }} .
-          docker tag alvin254/kodi:${{ env.VERSION }} alvin254/kodi:latest
-          docker push alvin254/kodi:${{ env.VERSION }}
-          docker push alvin254/kodi:latest
+          docker build -t gcr.io/kodiak-448212/kodi:${{ env.VERSION }} ./frontend
+          docker push gcr.io/kodiak-448212/kodi:${{ env.VERSION }}
 
       # Update Kubernetes manifest in GitOps repository
       - name: Update Kubernetes manifest
         uses: stefanzweifel/git-auto-commit-action@v4
         with:
-          repository: https://github.com/your-org/kodiak.git
-          file_pattern: k8s/deployment.yaml
+          repository: https://github.com/your-org/kodi.git
+          file_pattern: package/manifests/frontend.yaml
           commit_message: "Update image version to ${{ env.VERSION }}"
           branch: main
