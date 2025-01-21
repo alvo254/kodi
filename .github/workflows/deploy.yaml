@@ -21,7 +21,7 @@ jobs:
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v1
         with:
-          workload_identity_provider: "projects/448212/locations/global/workloadIdentityPools/my-pool/providers/my-provider"
+          workload_identity_provider: "projects/142680795577/locations/global/workloadIdentityPools/kodiak-pool/providers/my-provider"
           service_account: "kodiac-svc-acc@kodiak-448212.iam.gserviceaccount.com"
 
       # Verify active Google Cloud account
