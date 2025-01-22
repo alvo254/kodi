@@ -49,12 +49,22 @@ jobs:
           docker build -t us-central1-docker.pkg.dev/kodiak-448212/kodiak/kodi:${{ env.VERSION }} ./frontend
           docker push us-central1-docker.pkg.dev/kodiak-448212/kodiak/kodi:${{ env.VERSION }}
 
-      # Update Kubernetes manifest
+      # Trigger Rolling Update by Updating the Deployment Image
+      - name: Update Kubernetes Deployment Image
+        run: |
+          kubectl set image deployment/car-app car-app=us-central1-docker.pkg.dev/kodiak-448212/kodiak/kodi:${{ env.VERSION }}
+
+      # Monitor Rolling Update Status
+      - name: Monitor Rolling Update
+        run: |
+          kubectl rollout status deployment/car-app
+
+      # Update Kubernetes manifest (optional, for version tracking)
       - name: Update Kubernetes manifest
         run: |
           sed -i "s|image: us-central1-docker.pkg.dev/kodiak-448212/kodiak/kodi:.*|image: us-central1-docker.pkg.dev/kodiak-448212/kodiak/kodi:${{ env.VERSION }}|" package/manifests/frontend.yaml
 
-      # Commit and push changes
+      # Commit and push changes (optional, for version tracking)
       - name: Commit and push changes
         uses: stefanzweifel/git-auto-commit-action@v4
         with:
