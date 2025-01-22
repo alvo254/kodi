@@ -49,6 +49,11 @@ jobs:
           docker build -t us-central1-docker.pkg.dev/kodiak-448212/kodiak/kodi:${{ env.VERSION }} ./frontend
           docker push us-central1-docker.pkg.dev/kodiak-448212/kodiak/kodi:${{ env.VERSION }}
 
+      # Configure kubectl to connect to the GKE cluster
+      - name: Configure kubectl
+        run: |
+          gcloud container clusters get-credentials kodiak-cluster --region us-central1-c --project kodiak-448212
+
       # Trigger Rolling Update by Updating the Deployment Image
       - name: Update Kubernetes Deployment Image
         run: |
