@@ -2,21 +2,40 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: car-app
-  namespace: default
-  labels:
-    app: car-app
+  namespace: frontend  # Deploy the workload in a separate namespace
 spec:
-  replicas: 2
+  replicas: 3
   selector:
     matchLabels:
-      app: car-app   # Fixed selector to match the pod's label
+      app: car-app
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 25%
+      maxSurge: 25%
   template:
     metadata:
       labels:
-        app: car-app   # Label for pods to match with the service
+        app: car-app
     spec:
       containers:
         - name: car-app
           image: alvin254/car-app:v1.0.0
           ports:
             - containerPort: 3000
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sh", "-c", "sleep 10"]
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 20
