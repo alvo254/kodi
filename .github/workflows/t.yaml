@@ -64,16 +64,11 @@ jobs:
           commit_message: "Update image version to ${{ env.VERSION }}"
           branch: main
 
-      # Wait for ArgoCD Sync
+      # Wait for ArgoCD to deploy the new version
       - name: Wait for ArgoCD Sync
-        run: sleep 30  # Allows ArgoCD to detect changes before rollout check
+        run: sleep 30  # Optional: Gives ArgoCD time to detect changes before checking rollout status
 
-      # Monitor Rolling Update Status with
-      - name: Monitor Rolling Update
+      # Verify deployment (ensure the update is applied)
+      - name: Check ArgoCD Deployment Status
         run: |
           kubectl rollout status deployment/car-app -n frontend
-
-      # Check Deployment History
-      - name: Check Deployment History
-        run: |
-          kubectl rollout history deployment/car-app -n frontend
