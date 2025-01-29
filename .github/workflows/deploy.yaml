@@ -51,6 +51,17 @@ jobs:
           docker build -t us-central1-docker.pkg.dev/kodiak-448212/kodiak/kodi:${{ env.VERSION }} ./frontend
           docker push us-central1-docker.pkg.dev/kodiak-448212/kodiak/kodi:${{ env.VERSION }}
 
+      # Configure kubectl to use gke-gcloud-auth-plugin
+      - name: Configure kubectl
+        run: |
+          # Ensure the plugin is executable
+          chmod +x $(which gke-gcloud-auth-plugin)
+
+          # Update kubeconfig to use the plugin
+          export USE_GKE_GCLOUD_AUTH_PLUGIN=True
+          gcloud container clusters get-credentials kodiak-cluster --region us-central1-c --project kodiak-448212
+
+          
       # Update Kubernetes manifest (Before ArgoCD syncs)
       - name: Update Kubernetes manifest
         run: |
