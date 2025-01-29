@@ -1,4 +1,4 @@
-name: Build and Deploy Car App
+name: Build and Push Image
 
 on:
   push:
@@ -6,7 +6,7 @@ on:
       - main
 
 jobs:
-  build-and-deploy:
+  build-and-push:
     runs-on: ubuntu-latest
 
     permissions:
@@ -33,7 +33,7 @@ jobs:
       - name: Set up Cloud SDK
         uses: google-github-actions/setup-gcloud@v1
         with:
-          install_components: 'gke-gcloud-auth-plugin'
+          install_components: 'gke-gcloud-auth-plugin'  # Ensure the plugin is installed
 
       # Configure Docker for Artifact Registry
       - name: Configure Docker for Artifact Registry
@@ -45,35 +45,41 @@ jobs:
         id: version
         run: echo "VERSION=v1.${{ github.run_number }}" >> $GITHUB_ENV
 
-      # Build and Push Docker Image to Google Artifact Registry
+      # Build and Push Docker Image to GCP Container Registry
       - name: Build and Push Docker Image
         run: |
           docker build -t us-central1-docker.pkg.dev/kodiak-448212/kodiak/kodi:${{ env.VERSION }} ./frontend
           docker push us-central1-docker.pkg.dev/kodiak-448212/kodiak/kodi:${{ env.VERSION }}
 
-      # Update Kubernetes manifest (Before ArgoCD syncs)
+      # Configure kubectl to use gke-gcloud-auth-plugin
+      - name: Configure kubectl
+        run: |
+          # Ensure the plugin is executable
+          chmod +x $(which gke-gcloud-auth-plugin)
+
+          # Update kubeconfig to use the plugin
+          export USE_GKE_GCLOUD_AUTH_PLUGIN=True
+          gcloud container clusters get-credentials kodiak-cluster --region us-central1-c --project kodiak-448212
+
+      # Trigger Rolling Update by Updating the Deployment Image
+      - name: Update Kubernetes Deployment Image
+        run: |
+          kubectl set image deployment/car-app car-app=us-central1-docker.pkg.dev/kodiak-448212/kodiak/kodi:${{ env.VERSION }}
+
+      # Monitor Rolling Update Status
+      - name: Monitor Rolling Update
+        run: |
+          kubectl rollout status deployment/car-app
+
+      # Update Kubernetes manifest (optional, for version tracking)
       - name: Update Kubernetes manifest
         run: |
-          sed -i "s|image: .*|image: us-central1-docker.pkg.dev/kodiak-448212/kodiak/kodi:${{ env.VERSION }}|" package/manifests/frontend.yaml
+          sed -i "s|image: us-central1-docker.pkg.dev/kodiak-448212/kodiak/kodi:.*|image: us-central1-docker.pkg.dev/kodiak-448212/kodiak/kodi:${{ env.VERSION }}|" package/manifests/frontend.yaml
 
-      # Commit and push changes to Git (Triggers ArgoCD Sync)
+      # Commit and push changes (optional, for version tracking)
       - name: Commit and push changes
         uses: stefanzweifel/git-auto-commit-action@v4
         with:
           file_pattern: package/manifests/frontend.yaml
           commit_message: "Update image version to ${{ env.VERSION }}"
           branch: main
-
-      # Wait for ArgoCD Sync
-      - name: Wait for ArgoCD Sync
-        run: sleep 30  # Allows ArgoCD to detect changes before rollout check
-
-      # Monitor Rolling Update Status with
-      - name: Monitor Rolling Update
-        run: |
-          kubectl rollout status deployment/car-app -n frontend
-
-      # Check Deployment History
-      - name: Check Deployment History
-        run: |
-          kubectl rollout history deployment/car-app -n frontend

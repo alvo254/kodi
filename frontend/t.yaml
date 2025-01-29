@@ -51,6 +51,17 @@ jobs:
           docker build -t us-central1-docker.pkg.dev/kodiak-448212/kodiak/kodi:${{ env.VERSION }} ./frontend
           docker push us-central1-docker.pkg.dev/kodiak-448212/kodiak/kodi:${{ env.VERSION }}
 
+      # Configure kubectl to use gke-gcloud-auth-plugin
+      - name: Configure kubectl
+        run: |
+          # Ensure the plugin is executable
+          chmod +x $(which gke-gcloud-auth-plugin)
+
+          # Update kubeconfig to use the plugin
+          export USE_GKE_GCLOUD_AUTH_PLUGIN=True
+          gcloud container clusters get-credentials kodiak-cluster --region us-central1-c --project kodiak-448212
+
+          
       # Update Kubernetes manifest (Before ArgoCD syncs)
       - name: Update Kubernetes manifest
         run: |
@@ -64,11 +75,16 @@ jobs:
           commit_message: "Update image version to ${{ env.VERSION }}"
           branch: main
 
-      # Wait for ArgoCD to deploy the new version
+      # Wait for ArgoCD Sync
       - name: Wait for ArgoCD Sync
-        run: sleep 30  # Optional: Gives ArgoCD time to detect changes before checking rollout status
+        run: sleep 30  # Allows ArgoCD to detect changes before rollout check
 
-      # Verify deployment (ensure the update is applied)
-      - name: Check ArgoCD Deployment Status
+      # Monitor Rolling Update Status with
+      - name: Monitor Rolling Update
         run: |
           kubectl rollout status deployment/car-app -n frontend
+
+      # Check Deployment History
+      - name: Check Deployment History
+        run: |
+          kubectl rollout history deployment/car-app -n frontend
