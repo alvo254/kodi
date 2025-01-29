@@ -20,7 +20,7 @@ spec:
     spec:
       containers:
         - name: car-app
-          image: alvin254/car-app:v1.0.0
+          image: us-central1-docker.pkg.dev/kodiak-448212/kodiak/kodi:v1.32
           ports:
             - containerPort: 3000
           lifecycle:
