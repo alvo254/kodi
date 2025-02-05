@@ -13,7 +13,7 @@ spec:
   logs:
     enabled: true
     containerCollectAll: true
-    containerRuntime: "docker"
+    containerRuntime: "containerd"
   apm:
     enabled: true
     portEnabled: true
