@@ -27,6 +27,9 @@ spec:
           image: us-central1-docker.pkg.dev/kodiak-448212/kodiak/kodi:v1.38
           ports:
             - containerPort: 3000
+          env:
+            - name: HOST
+              value: "0.0.0.0"
           lifecycle:
             preStop:
               exec:
