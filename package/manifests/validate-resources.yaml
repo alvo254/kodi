@@ -25,6 +25,8 @@ spec:
             - gmp-public
             - gmp-system
             - monitoring
+            - datadog
+            - ingress-nginx 
             - grafana
       validate:
         message: "All resources must have 'app' and 'env' labels."
