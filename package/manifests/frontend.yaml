@@ -24,7 +24,7 @@ spec:
     spec:
       containers:
         - name: car-app
-          image: us-central1-docker.pkg.dev/kodiak-448212/kodiak/kodi:v1.42
+          image: us-central1-docker.pkg.dev/kodiak-448212/kodiak/kodi:v1.43
           ports:
             - containerPort: 3000
           env:
