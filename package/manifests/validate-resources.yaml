@@ -26,6 +26,7 @@ spec:
             - gmp-system
             - monitoring
             - datadog
+            - crossplane-system
             - ingress-nginx 
             - grafana
       validate:
