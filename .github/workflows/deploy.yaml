@@ -72,7 +72,7 @@ jobs:
         uses: stefanzweifel/git-auto-commit-action@v4
         with:
           file_pattern: package/manifests/frontend.yaml
-          commit_message: "Update image version to ${{ env.VERSION }}"
+          commit_message: "[Update image version to ${{ env.VERSION }}]"
           branch: main
 
       # Wait for ArgoCD Sync
